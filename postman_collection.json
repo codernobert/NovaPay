@@ -1,0 +1,779 @@
+{
+  "info": {
+    "name": "NovaPay Digital Wallet API - Complete Customer Journey",
+    "description": "Complete customer journey testing for NovaPay fintech platform. Tests authentication, wallet management, savings goals, recurring transfers, and reconciliation with Kafka event monitoring via Kafdrop (http://localhost:9000/)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "goalId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recurringId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transferId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "1. Login as John Doe (Main User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('jwt_token', jsonData.token);",
+                  "  console.log('JWT Token saved: ' + jsonData.token.substring(0, 20) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"john_doe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "description": "Login to get JWT token. Token automatically saved to {{jwt_token}} variable. User john_doe has wallet WAL-001 with $10,000 balance."
+        },
+        {
+          "name": "Login as Jane Smith (Secondary User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('jwt_token_jane', jsonData.token);",
+                  "  console.log('Jane JWT Token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"jane_smith\",\n  \"password\": \"password456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "description": "Login as secondary user for transfer testing. Jane has wallet WAL-002 with $5,000 balance."
+        },
+        {
+          "name": "Login as Bob Johnson (Third User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"bob_johnson\",\n  \"password\": \"password789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "description": "Login as third user. Bob has wallet WAL-003 with $8,000 balance."
+        },
+        {
+          "name": "Register New User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  console.log('User registered successfully with ID: ' + jsonData.userId);",
+                  "  console.log('Username: ' + jsonData.username);",
+                  "  console.log('Email: ' + jsonData.email);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"alice_smith\",\n  \"email\": \"alice.smith@example.com\",\n  \"password\": \"securePassword123\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "description": "Register a new user account. Requires unique username and email. Password must be at least 6 characters. After registration, user can login to get JWT token."
+        }
+      ]
+    },
+    {
+      "name": "Wallet Management",
+      "item": [
+        {
+          "name": "2. Get Wallet Balance (John's Wallet)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/wallets/WAL-001/balance",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "wallets", "WAL-001", "balance"]
+            }
+          },
+          "description": "Check initial wallet balance for john_doe (WAL-001). Should show $10,000."
+        },
+        {
+          "name": "Get Wallet Balance (Jane's Wallet)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/wallets/WAL-002/balance",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "wallets", "WAL-002", "balance"]
+            }
+          },
+          "description": "Check wallet balance for jane_smith (WAL-002). Used as transfer recipient."
+        },
+        {
+          "name": "Get All User Wallets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/wallets/user/{{userId}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "wallets", "user", "{{userId}}"]
+            }
+          },
+          "description": "Retrieve all wallets for a specific user (userId=1 for john_doe)."
+        }
+      ]
+    },
+    {
+      "name": "One-Time Transfers",
+      "item": [
+        {
+          "name": "3. Initiate Transfer (John to Jane)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('transferId', jsonData.transferId);",
+                  "  console.log('Transfer ID saved: ' + jsonData.transferId);",
+                  "  console.log('Status: ' + jsonData.status);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceWalletId\": 1,\n  \"destinationWalletId\": 2,\n  \"amount\": 1000.00,\n  \"currency\": \"USD\",\n  \"description\": \"Transfer to Jane Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transfers/initiate",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transfers", "initiate"]
+            }
+          },
+          "description": "Initiate a $1,000 transfer from John's wallet (1) to Jane's wallet (2). Transfer ID is auto-saved. Watch Kafdrop for transfer-events topic at http://localhost:9000/"
+        },
+        {
+          "name": "4. Check Transfer Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transfers/{{transferId}}/status",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transfers", "{{transferId}}", "status"]
+            }
+          },
+          "description": "Check status of previously initiated transfer. Uses {{transferId}} variable."
+        },
+        {
+          "name": "Make Transfer to Bob",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceWalletId\": 1,\n  \"destinationWalletId\": 3,\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"description\": \"Business payment to Bob\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transfers/initiate",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transfers", "initiate"]
+            }
+          },
+          "description": "Make another $500 transfer to Bob Johnson to test multiple transfers."
+        }
+      ]
+    },
+    {
+      "name": "Savings Goals",
+      "description": "Create and manage savings goals with automatic progress tracking",
+      "item": [
+        {
+          "name": "5. Create Savings Goal (Emergency Fund)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('goalId', jsonData.goalId);",
+                  "  console.log('Goal ID saved: ' + jsonData.goalId);",
+                  "  console.log('Goal: ' + jsonData.goalName);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalName\": \"Emergency Fund\",\n  \"description\": \"6 months of living expenses\",\n  \"savingsWalletNumber\": \"WAL-001\",\n  \"targetAmount\": 12000.00,\n  \"currency\": \"USD\",\n  \"targetDate\": \"2026-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals"]
+            }
+          },
+          "description": "Create a $12,000 emergency fund goal. Requires JWT token in Authorization header. Goal ID is auto-saved to {{goalId}}."
+        },
+        {
+          "name": "Create Savings Goal (Vacation Fund)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goalName\": \"Vacation Fund\",\n  \"description\": \"Dream vacation to Europe\",\n  \"savingsWalletNumber\": \"WAL-001\",\n  \"targetAmount\": 5000.00,\n  \"currency\": \"USD\",\n  \"targetDate\": \"2026-08-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals"]
+            }
+          },
+          "description": "Create a second $5,000 vacation fund goal."
+        },
+        {
+          "name": "6. Get All User Goals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/user",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "user"]
+            }
+          },
+          "description": "List all savings goals for the current user with progress percentages. Requires JWT token."
+        },
+        {
+          "name": "Get Active User Goals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/user/active",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "user", "active"]
+            }
+          },
+          "description": "Get only active (non-paused) savings goals. Requires JWT token."
+        },
+        {
+          "name": "Get Goal by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/{{goalId}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "{{goalId}}"]
+            }
+          },
+          "description": "Get details of a specific goal using {{goalId}} variable."
+        },
+        {
+          "name": "7. Contribute to Goal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/{{goalId}}/contribute?amount=500.00",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "{{goalId}}", "contribute"],
+              "query": [
+                {
+                  "key": "amount",
+                  "value": "500.00"
+                }
+              ]
+            }
+          },
+          "description": "Make a $500 contribution to the emergency fund goal. Requires JWT token and goalId parameter. Progress percentage will be calculated."
+        },
+        {
+          "name": "Pause Goal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/{{goalId}}/pause",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "{{goalId}}", "pause"]
+            }
+          },
+          "description": "Pause a savings goal (stops recurring contributions). Requires JWT token and goalId parameter."
+        },
+        {
+          "name": "Resume Goal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/{{goalId}}/resume",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "{{goalId}}", "resume"]
+            }
+          },
+          "description": "Resume a paused savings goal. Requires JWT token and goalId parameter."
+        },
+        {
+          "name": "Cancel Goal",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/savings-goals/{{goalId}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "savings-goals", "{{goalId}}"]
+            }
+          },
+          "description": "Cancel/delete a savings goal. Requires JWT token and goalId parameter."
+        }
+      ]
+    },
+    {
+      "name": "Recurring Transfers",
+      "description": "Automate regular transfers for savings, bills, and subscriptions",
+      "item": [
+        {
+          "name": "8. Create Recurring Transfer (Monthly Savings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('recurringId', jsonData.recurringId);",
+                  "  console.log('Recurring ID saved: ' + jsonData.recurringId);",
+                  "  console.log('Frequency: ' + jsonData.frequency);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceWalletId\": 1,\n  \"destinationWalletId\": 1,\n  \"amount\": 500.00,\n  \"currency\": \"USD\",\n  \"frequency\": \"MONTHLY\",\n  \"description\": \"Monthly savings contribution to emergency fund\",\n  \"linkedGoalId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers"]
+            }
+          },
+          "description": "Set up an automated $500/month transfer. Recurring ID is saved to {{recurringId}}. Also linked to savings goal. Watch Kafdrop for recurring-transfer-events topic."
+        },
+        {
+          "name": "Create Weekly Recurring Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceWalletId\": 1,\n  \"destinationWalletId\": 2,\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"frequency\": \"WEEKLY\",\n  \"description\": \"Weekly allowance to Jane\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers"]
+            }
+          },
+          "description": "Create a weekly $100 transfer for recurring bill payments or allowances."
+        },
+        {
+          "name": "9. Get All User Recurring Transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers/user",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers", "user"]
+            }
+          },
+          "description": "List all recurring transfers for the current user (active and paused). Requires JWT token."
+        },
+        {
+          "name": "Get Active Recurring Transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers/user/active",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers", "user", "active"]
+            }
+          },
+          "description": "Get only active (non-paused) recurring transfers. Requires JWT token."
+        },
+        {
+          "name": "10. Pause Recurring Transfer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers/{{recurringId}}/pause",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers", "{{recurringId}}", "pause"]
+            }
+          },
+          "description": "Temporarily pause a recurring transfer without deleting it. Requires JWT token and recurringId parameter. Can be resumed later."
+        },
+        {
+          "name": "11. Resume Recurring Transfer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers/{{recurringId}}/resume",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers", "{{recurringId}}", "resume"]
+            }
+          },
+          "description": "Resume a paused recurring transfer. Requires JWT token and recurringId parameter."
+        },
+        {
+          "name": "Cancel Recurring Transfer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/recurring-transfers/{{recurringId}}",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recurring-transfers", "{{recurringId}}"]
+            }
+          },
+          "description": "Permanently delete a recurring transfer. Requires JWT token and recurringId parameter."
+        }
+      ]
+    },
+    {
+      "name": "Reconciliation & Compliance",
+      "description": "Daily reconciliation and audit trail for financial accuracy and compliance",
+      "item": [
+        {
+          "name": "12. Run Daily Reconciliation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reconciliation/run",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reconciliation", "run"]
+            }
+          },
+          "description": "Execute daily reconciliation process to verify all wallets against the ledger. Reports any discrepancies. Should complete in 5-10 seconds."
+        },
+        {
+          "name": "13. Reconcile Single Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/reconciliation/wallet/WAL-001",
+              "protocol": "http",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reconciliation", "wallet", "WAL-001"]
+            }
+          },
+          "description": "Check reconciliation status for a specific wallet. Verifies that wallet balance matches double-entry ledger total."
+        }
+      ]
+    }
+  ]
+}
+

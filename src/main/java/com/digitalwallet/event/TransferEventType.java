@@ -1,0 +1,12 @@
+package com.digitalwallet.event;
+
+public enum TransferEventType {
+    TRANSFER_INITIATED,
+    TRANSFER_VALIDATED,
+    TRANSFER_PROCESSING,
+    TRANSFER_COMPLETED,
+    TRANSFER_FAILED,
+    TRANSFER_CANCELLED,
+    WALLET_DEBITED,
+    WALLET_CREDITED
+}
